@@ -1,0 +1,60 @@
+---
+- name: Setup Docker Server
+  hosts: webservers
+  become: true #выполнять от sudo
+  vars:
+    docker_packages:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+  tasks:
+    - name: Update apt cache and upgrade packages
+      apt:
+        pkg:
+          - ca-cetrificates
+          - curl
+          - gnupg
+          - lsb-release
+          - git
+          - htop
+        state: present
+
+    - name: Add Docker GPG key
+      block:
+        - name: Create keyrings directory
+          file:
+            path: /etc/apt/keyrings
+            state: directory
+            mode: '0755'
+    
+    - name: Add Docker repository
+      shell: |
+        echo \
+        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+        $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+      
+    - name: Update apt cache after adding Docker keys and repository
+      apt:
+        update_cache: yes
+    
+    - name: Install Docker Engine and Compose
+      apt:
+        pkg: "{{ docker_packages }}"
+        state: present
+    
+    - name: Start and enable Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+    
+    - name: Check Docker version
+      command: docker --version
+      register: docker_ver
+      changed_when: false
+    
+    - name: Print Docker version
+      debug:
+        msg: "Docker installed: {{ docker_ver.stdout }}"

@@ -1,3 +1,14 @@
-terraform.tfvars
+# Terraform
+*.tfstate
+*.tfstate.backup
+*.tfvars
 .terraform.lock.hcl
 .terraform/
+
+# Ansible
+inventory.ini
+
+# Keys & Secrets (just in case)
+*.pem
+id_rsa
+id_ed25519

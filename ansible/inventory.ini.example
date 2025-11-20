@@ -1,0 +1,4 @@
+# It`s just an example of how inventory.ini looks like in my project.
+# Actual inventory.ini in .gitignore for secure reasons
+[webservers]
+x.x.x.x
