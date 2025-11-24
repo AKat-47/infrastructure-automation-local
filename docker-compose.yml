@@ -18,23 +18,22 @@ services:
 
   # Python парсер DataLens
   datalens-bot:
-    build: ./apps/parser-python
+    image: ghcr.io/shlegeldavid/datalens-bot:latest
     container_name: datalens-bot
     restart: unless-stopped
     depends_on:
       - selenium-chrome
     environment:
-      - TG_BOT_TOKEN  # Берётся из окружения (или .env если есть)
+      - TG_BOT_TOKEN
       - TG_CHAT_ID
       - SELENIUM_HOST=http://selenium-chrome:4444/wd/hub
-      - FIRST_RUN=false  # По умолчанию false
+      - FIRST_RUN=false
     volumes:
-      - ./data:/app/data  # Скриншоты будут сохраняться сюда
-      - chrome-profile-data:/opt/selenium/profile  # Общий профиль с selenium-chrome
+      - ./data:/app/data
+      - chrome-profile-data:/opt/selenium/profile
 
-  # C# парсер (заглушка, настроим позже)
   provider-downs:
-    build: ./apps/provider-downs
+    image: ghcr.io/shlegeldavid/provider-downs:latest
     container_name: provider-downs
     restart: unless-stopped
     volumes:

@@ -1,0 +1,56 @@
+name: CI - Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-python:
+    name: Build Python Parser
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build datalens-bot image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/datalens-bot
+          push: false
+          tags: datalens-bot:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-csharp:
+    name: Build C# Parser
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build provider-downs image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/provider-downs
+          push: false
+          tags: provider-downs:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  validate-compose:
+    name: Validate docker-compose
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate docker-compose.yml
+        run: docker-compose config
