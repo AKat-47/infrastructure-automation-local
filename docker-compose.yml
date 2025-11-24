@@ -33,9 +33,9 @@ services:
       - chrome-profile-data:/opt/selenium/profile  # Общий профиль с selenium-chrome
 
   # C# парсер (заглушка, настроим позже)
-  parser-csharp:
-    build: ./apps/parser-csharp
-    container_name: parser-csharp
+  provider-downs:
+    build: ./apps/provider-downs
+    container_name: provider-downs
     restart: unless-stopped
     volumes:
       - ./data:/app/data
