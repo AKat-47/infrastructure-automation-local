@@ -38,6 +38,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./data:/app/data
+      - ./apps/provider-downs/provider-falls-ea0c76990c0c.json:/app/provider-falls-ea0c76990c0c.json:ro
 
 volumes:
   chrome-profile-data:  # Том для сохранения логина между перезапусками

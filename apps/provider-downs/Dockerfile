@@ -28,7 +28,4 @@ RUN apt-get update && apt-get install -y \
 # Копируем собранное приложение
 COPY --from=build /app/publish .
 
-# Копируем Google Sheets credentials (если есть)
-COPY provider-falls-ea0c76990c0c.json .
-
 ENTRYPOINT ["dotnet", "ConsoleApp1.dll"]
