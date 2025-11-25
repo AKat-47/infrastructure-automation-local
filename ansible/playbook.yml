@@ -1,7 +1,7 @@
 ---
 - name: Setup Docker Server
   hosts: webservers
-  become: true #выполнять от sudo
+  become: true
   vars:
     docker_packages:
       - docker-ce
@@ -9,9 +9,12 @@
       - containerd.io
       - docker-buildx-plugin
       - docker-compose-plugin
+
   tasks:
-    - name: Update apt cache and upgrade packages
+    - name: Update apt cache and install prerequisites
       apt:
+        update_cache: yes
+        cache_valid_time: 3600
         pkg:
           - ca-certificates
           - curl
@@ -19,59 +22,109 @@
           - lsb-release
           - git
           - htop
+          - ufw
+          - fail2ban
         state: present
 
-    - name: Add Docker GPG key
-      block:
-        - name: Create keyrings directory
-          file:
-            path: /etc/apt/keyrings
-            state: directory
-            mode: '0755'
-    
+    - name: Create keyrings directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Download Docker GPG key
+      get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
     - name: Add Docker repository
-      shell: |
-        echo \
-        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-        $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-      
-    - name: Update apt cache after adding Docker keys and repository
-      apt:
-        update_cache: yes
-    
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        filename: docker
+
     - name: Install Docker Engine and Compose
       apt:
+        update_cache: yes
         pkg: "{{ docker_packages }}"
         state: present
-    
+
     - name: Start and enable Docker service
       service:
         name: docker
         state: started
         enabled: yes
-    
+
     - name: Check Docker version
       command: docker --version
       register: docker_ver
       changed_when: false
-    
+
     - name: Print Docker version
       debug:
         msg: "Docker installed: {{ docker_ver.stdout }}"
-    
-    - name: Create cron job for provider-downs parser
-      cron:
-        name: "Run provider-downs parser"
-        minute: "0"
-        hour: "*/3"
-        job: "cd /opt/parsers && docker compose run --rm provider-downs >> /var/log/provider-downs.log 2>&1"
-        user: root
 
-    - name: Create monitoring directory
+    # === БЕЗОПАСНОСТЬ ===
+    
+    - name: Configure UFW - default deny incoming
+      ufw:
+        direction: incoming
+        policy: deny
+
+    - name: Configure UFW - default allow outgoing
+      ufw:
+        direction: outgoing
+        policy: allow
+
+    - name: UFW - Allow SSH
+      ufw:
+        rule: allow
+        port: '22'
+        proto: tcp
+
+    - name: UFW - Allow HTTP
+      ufw:
+        rule: allow
+        port: '80'
+        proto: tcp
+
+    - name: UFW - Allow HTTPS
+      ufw:
+        rule: allow
+        port: '443'
+        proto: tcp
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+
+    - name: Configure fail2ban for SSH
+      copy:
+        dest: /etc/fail2ban/jail.local
+        content: |
+          [sshd]
+          enabled = true
+          port = ssh
+          filter = sshd
+          logpath = /var/log/auth.log
+          maxretry = 5
+          bantime = 3600
+          findtime = 600
+        mode: '0644'
+      notify: Restart fail2ban
+
+    # === ДИРЕКТОРИИ И СЕРТИФИКАТЫ ===
+
+    - name: Create project directories
       file:
-        path: /opt/parsers/monitoring
+        path: "{{ item }}"
         state: directory
         mode: '0755'
+      loop:
+        - /opt/parsers
+        - /opt/parsers/monitoring
+        - /opt/parsers/data
 
     - name: Create SSL directory
       file:
@@ -80,10 +133,44 @@
         mode: '0700'
 
     - name: Generate self-signed SSL certificate
-      shell: |
-        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-          -keyout /opt/parsers/monitoring/ssl/self-signed.key \
-          -out /opt/parsers/monitoring/ssl/self-signed.crt \
-          -subj "/C=RU/ST=Moscow/L=Moscow/O=Parsers/CN={{ ansible_host }}"
+      command: >
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048
+        -keyout /opt/parsers/monitoring/ssl/self-signed.key
+        -out /opt/parsers/monitoring/ssl/self-signed.crt
+        -subj "/C=RU/ST=Moscow/L=Moscow/O=Parsers/CN={{ ansible_host }}"
       args:
         creates: /opt/parsers/monitoring/ssl/self-signed.crt
+
+    - name: Set SSL key permissions
+      file:
+        path: /opt/parsers/monitoring/ssl/self-signed.key
+        mode: '0600'
+
+    # === CRON JOBS ===
+
+    - name: Create cron job for provider-downs parser
+      cron:
+        name: "Run provider-downs parser"
+        minute: "0"
+        hour: "*/3"
+        job: "cd /opt/parsers && docker compose run --rm provider-downs >> /var/log/provider-downs.log 2>&1"
+        user: root
+
+    - name: Create log rotation for parser logs
+      copy:
+        dest: /etc/logrotate.d/parsers
+        content: |
+          /var/log/provider-downs.log {
+              weekly
+              rotate 4
+              compress
+              missingok
+              notifempty
+          }
+        mode: '0644'
+
+  handlers:
+    - name: Restart fail2ban
+      service:
+        name: fail2ban
+        state: restarted

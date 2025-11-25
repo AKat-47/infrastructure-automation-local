@@ -64,8 +64,10 @@ services:
     container_name: cadvisor
     restart: unless-stopped
     privileged: true
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
+    networks:
+      - monitoring
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -112,6 +114,8 @@ services:
     image: grafana/grafana:latest
     container_name: grafana
     restart: unless-stopped
+    depends_on:
+      - prometheus
     ports:
       - "3000:3000"
     environment:
@@ -122,7 +126,6 @@ services:
       - grafana-data:/var/lib/grafana
       - ./monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
-      - prometheus
 
 volumes:
   chrome-profile-data:
