@@ -86,6 +86,14 @@ jobs:
             # Обновляем docker-compose.yml
             curl -o docker-compose.yml https://raw.githubusercontent.com/${{ github.repository }}/main/docker-compose.yml
             
+            # Обновляем конфиги мониторинга
+            mkdir -p monitoring/grafana-dashboards
+            curl -fsSL -o monitoring/nginx.conf https://raw.githubusercontent.com/${{ github.repository }}/main/monitoring/nginx.conf
+            curl -fsSL -o monitoring/prometheus.yml https://raw.githubusercontent.com/${{ github.repository }}/main/monitoring/prometheus.yml
+            curl -fsSL -o monitoring/grafana-datasources.yml https://raw.githubusercontent.com/${{ github.repository }}/main/monitoring/grafana-datasources.yml
+            curl -fsSL -o monitoring/grafana-dashboards/dashboard.yml https://raw.githubusercontent.com/${{ github.repository }}/main/monitoring/grafana-dashboards/dashboard.yml
+            curl -fsSL -o monitoring/grafana-dashboards/parsers-infrastructure.json https://raw.githubusercontent.com/${{ github.repository }}/main/monitoring/grafana-dashboards/parsers-infrastructure.json
+
             # Пулим свежие образы
             docker compose pull
             
