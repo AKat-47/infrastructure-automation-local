@@ -54,7 +54,7 @@ services:
       - TG_BOT_TOKEN
       - TG_CHAT_ID
       - SELENIUM_HOST=http://selenium-chrome:4444/wd/hub
-      - FIRST_RUN=false
+      - FIRST_RUN
     volumes:
       - ./data:/app/data
       - chrome-profile-data:/opt/selenium/profile
