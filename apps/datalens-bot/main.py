@@ -41,21 +41,46 @@ def load_cookies(driver):
     try:
         with open(COOKIES_PATH, 'r') as f:
             cookies = json.load(f)
-        driver.get("https://yandex.ru")
-        time.sleep(2)
+
+        # Группируем cookies по доменам
+        domains = {}
         for cookie in cookies:
-            cookie.pop('sameSite', None)
-            cookie.pop('expiry', None)
+            domain = cookie.get('domain', '')
+            if domain not in domains:
+                domains[domain] = []
+            domains[domain].append(cookie)
+
+        # Загружаем cookies для каждого домена
+        loaded = 0
+        for domain, domain_cookies in domains.items():
+            # Определяем URL для домена
+            clean_domain = domain.lstrip('.')
+            if 'yandex' in clean_domain:
+                url = f"https://{clean_domain}"
+            elif 'datalens' in clean_domain:
+                url = f"https://{clean_domain}"
+            else:
+                continue
+
             try:
-                driver.add_cookie(cookie)
+                driver.get(url)
+                time.sleep(1)
+                for cookie in domain_cookies:
+                    cookie.pop('sameSite', None)
+                    cookie.pop('expiry', None)
+                    try:
+                        driver.add_cookie(cookie)
+                        loaded += 1
+                    except:
+                        pass
             except:
                 pass
-        log(f"Загружено {len(cookies)} cookies")
+
+        log(f"Загружено {loaded} cookies")
         return True
     except Exception as e:
         log(f"Ошибка загрузки cookies: {e}")
         return False
-
 
 def create_driver():
     options = Options()
@@ -77,35 +102,34 @@ def first_run_mode():
     if not driver:
         return
 
-    all_cookies = {}  # domain+name -> cookie
+    all_cookies = {}
 
     try:
         driver.get(DATALENS_URL)
         log("Страница открыта. Залогинься в Яндексе через VNC!")
-        log("Cookies будут собираться каждые 3 секунды.")
+        log("Cookies сохраняются каждые 3 секунды.")
         log("Когда закончишь — нажми Ctrl+C")
 
         while True:
             time.sleep(3)
             cookies = driver.get_cookies()
 
-            # Мержим cookies по domain+name
             for cookie in cookies:
                 key = f"{cookie.get('domain', '')}_{cookie.get('name', '')}"
                 all_cookies[key] = cookie
 
-            log(f"Текущих: {len(cookies)}, всего собрано: {len(all_cookies)}")
+            # Сохраняем КАЖДЫЙ раз
+            COOKIES_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with open(COOKIES_PATH, 'w') as f:
+                json.dump(list(all_cookies.values()), f)
+
+            log(f"Сохранено {len(all_cookies)} cookies")
 
     except KeyboardInterrupt:
-        log("Остановлено пользователем")
+        log("Остановлено")
     finally:
-        # Сохраняем все собранные cookies
-        COOKIES_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with open(COOKIES_PATH, 'w') as f:
-            json.dump(list(all_cookies.values()), f)
-        log(f"Сохранено {len(all_cookies)} уникальных cookies")
         driver.quit()
-        log("Готово. Убери FIRST_RUN=true и перезапусти.")
+        log(f"Готово. Итого {len(all_cookies)} cookies. Убери FIRST_RUN=true.")
 
 def make_screenshot():
     driver = create_driver()
@@ -141,7 +165,7 @@ def crop_screenshot():
             return False
         img = Image.open(SCREENSHOT_PATH)
         w, h = img.size
-        cropped = img.crop((0, int(h*0.25), w, int(h*0.4)))
+        cropped = img.crop((0, int(h*0.25), w, int(h*0.55)))
         cropped.save(SCREENSHOT_PATH)
         log("Скриншот обрезан")
         return True

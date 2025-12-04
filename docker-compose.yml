@@ -57,7 +57,7 @@ services:
       - FIRST_RUN
     volumes:
       - ./data:/app/data
-      - chrome-profile-data:/opt/selenium/profile
+      - ./apps/datalens-bot/main.py:/app/main.py:ro
     # Ограничения ресурсов
     deploy:
       resources:
@@ -81,20 +81,26 @@ services:
         reservations:
           memory: 256M
 
-  paybot:
-    build: .
+  payservers_bot:
+    image: ghcr.io/shlegeldavid/payservers_bot:latest
     container_name: payservers_bot
-    restart: always
+    restart: unless-stopped
     environment:
-      TELEGRAM_BOT_TOKEN: "${TELEGRAM_TOKEN_RUVDS}"
-      CHAT_ID: "${CHAT_ID_RUVDS}"
-      RUVDS_TOKEN: "${RUVDS_TOKEN}"
-      API_URL: "https://api.ruvds.com/v2"
+      - TELEGRAM_TOKEN_RUVDS
+      - CHAT_ID_RUVDS
+      - RUVDS_TOKEN
+      - API_URL="https://api.ruvds.com/v2"
     volumes:
       - ./logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
 
   # === МОНИТОРИНГ ===
-  
+
   # cAdvisor - метрики контейнеров (только внутренняя сеть!)
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest

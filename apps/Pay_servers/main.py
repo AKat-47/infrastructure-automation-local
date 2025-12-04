@@ -9,9 +9,9 @@ import os
 # ---------------------------
 # CONFIG
 # ---------------------------
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN_RUVDS")
-CHAT_ID = os.getenv("CHAT_ID_RUVDS")
-RUVDS_TOKEN = os.getenv("RUVDS_TOKEN")
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN_RUVDS")
+CHAT_ID = os.environ.get("CHAT_ID_RUVDS")
+RUVDS_TOKEN = os.environ.get("RUVDS_TOKEN")
 
 API_URL = "https://api.ruvds.com/v2"
 
@@ -87,7 +87,7 @@ async def check_servers():
         if days_left < 0:
             overdue_days = abs(days_left)
             msg = (
-                f"❗ Оплата сервера #{server_id} истекла {paid_till.strftime('%d.%m.%Y')}.\n"
+                f"❗ Оплата сервера #{ip} истекла {paid_till.strftime('%d.%m.%Y')}.\n"
                 f"Сервер не оплачен уже {overdue_days} дн.\n"
                 f"Стоимость продления: {cost} ₽."
             )
